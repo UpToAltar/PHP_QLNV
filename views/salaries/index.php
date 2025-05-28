@@ -3,8 +3,11 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fas fa-money-bill-wave"></i> Quản lý lương</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="salaries.php?action=create" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tạo lương mới
+        <a href="salaries.php?action=create" class="btn btn-primary me-2">
+            <i class="fas fa-plus"></i> Tạo mới
+        </a>
+        <a href="salaries.php?action=bulkCreate" class="btn btn-success">
+            <i class="fas fa-copy"></i> Tạo hàng loạt
         </a>
     </div>
 </div>

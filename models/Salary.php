@@ -1,9 +1,11 @@
 <?php
 require_once 'config/database.php';
+require_once 'models/Bonus.php';
 
 class Salary {
     private $conn;
     private $table_name = "Salary";
+    private $bonus;
 
     public $id;
     public $userId;
@@ -13,6 +15,7 @@ class Salary {
 
     public function __construct($db) {
         $this->conn = $db;
+        $this->bonus = new Bonus($db);
     }
 
     public function create() {
@@ -25,8 +28,9 @@ class Salary {
 
         $this->id = htmlspecialchars(strip_tags($this->id));
         $this->userId = htmlspecialchars(strip_tags($this->userId));
-        $this->month = htmlspecialchars(strip_tags($this->month));
         $this->baseSalary = htmlspecialchars(strip_tags($this->baseSalary));
+        // Đảm bảo month luôn là ngày đầu tiên của tháng
+        $this->month = date('Y-m-01', strtotime($this->month));
 
         $stmt->bindParam(":id", $this->id);
         $stmt->bindParam(":userId", $this->userId);
@@ -48,12 +52,10 @@ class Salary {
                  LEFT JOIN Department d ON u.DepartmentId = d.Id
                  WHERE 1=1";
 
-        // Thêm điều kiện tìm kiếm theo nhân viên
         if(!empty($userId)) {
             $query .= " AND s.UserId = :userId";
         }
 
-        // Thêm điều kiện sắp xếp
         switch($sortBy) {
             case 'salary_asc':
                 $query .= " ORDER BY s.BaseSalary ASC, s.Month DESC, u.Name ASC";
@@ -112,8 +114,9 @@ class Salary {
 
         $this->id = htmlspecialchars(strip_tags($this->id));
         $this->userId = htmlspecialchars(strip_tags($this->userId));
-        $this->month = htmlspecialchars(strip_tags($this->month));
         $this->baseSalary = htmlspecialchars(strip_tags($this->baseSalary));
+        // Đảm bảo month luôn là ngày đầu tiên của tháng
+        $this->month = date('Y-m-01', strtotime($this->month));
 
         $stmt->bindParam(":id", $this->id);
         $stmt->bindParam(":userId", $this->userId);
@@ -161,43 +164,36 @@ class Salary {
     }
 
     public function getBonuses() {
-        $query = "SELECT * FROM Bonus WHERE SalaryId = :id ORDER BY CreatedAt DESC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $this->id);
-        $stmt->execute();
-        return $stmt;
+        return $this->bonus->getBySalaryId($this->id);
     }
 
-    public function addBonus($description, $amount) {
-        $query = "INSERT INTO Bonus (Id, SalaryId, Description, Amount)
-                 VALUES (:id, :salaryId, :description, :amount)";
-
-        $stmt = $this->conn->prepare($query);
-
-        $bonusId = uniqid();
-        $stmt->bindParam(":id", $bonusId);
-        $stmt->bindParam(":salaryId", $this->id);
-        $stmt->bindParam(":description", $description);
-        $stmt->bindParam(":amount", $amount);
-
-        return $stmt->execute();
+    public function addBonus($description, $amount, $type) {
+        $this->bonus->id = uniqid();
+        $this->bonus->salaryId = $this->id;
+        $this->bonus->description = $description;
+        $this->bonus->amount = $amount;
+        $this->bonus->type = $type;
+        return $this->bonus->create();
     }
 
     public function deleteBonus($bonusId) {
-        $query = "DELETE FROM Bonus WHERE Id = :id AND SalaryId = :salaryId";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $bonusId);
-        $stmt->bindParam(":salaryId", $this->id);
-        return $stmt->execute();
+        return $this->bonus->delete($bonusId);
     }
 
     public function existsForMonth() {
-        $query = "SELECT COUNT(*) as total FROM " . $this->table_name . "
-                 WHERE UserId = :userId AND Month = :month";
+        $query = "SELECT COUNT(*) as total 
+                 FROM " . $this->table_name . "
+                 WHERE UserId = :userId 
+                 AND YEAR(Month) = YEAR(:month)
+                 AND MONTH(Month) = MONTH(:month)
+                 AND Id != :id";
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":userId", $this->userId);
         $stmt->bindParam(":month", $this->month);
+        $stmt->bindParam(":id", $this->id);
         $stmt->execute();
+        
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row['total'] > 0;
     }
@@ -216,6 +212,20 @@ class Salary {
         $stmt->bindParam(":userId", $userId);
         $stmt->execute();
 
+        return $stmt;
+    }
+
+    public function getByUserAndMonth() {
+        $query = "SELECT * FROM " . $this->table_name . " 
+                 WHERE UserId = :userId 
+                 AND YEAR(Month) = YEAR(:month)
+                 AND MONTH(Month) = MONTH(:month)";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":userId", $this->userId);
+        $stmt->bindParam(":month", $this->month);
+        $stmt->execute();
+        
         return $stmt;
     }
 }

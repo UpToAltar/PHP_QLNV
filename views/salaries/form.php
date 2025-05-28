@@ -50,7 +50,7 @@ if (isset($_SESSION['message'])) {
                         <label for="month" class="form-label">Tháng <span class="text-danger">*</span></label>
                         <input type="month" class="form-control" id="month" name="month" 
                                value="<?php echo isset($salary) ? date('Y-m', strtotime($salary['Month'])) : ''; ?>" 
-                               required <?php echo isset($_GET['view']) ? 'disabled' : ''; ?>>
+                               required <?php echo (isset($_GET['view']) || isset($salary)) ? 'disabled' : ''; ?>>
                     </div>
 
                     <div class="mb-3">
@@ -132,16 +132,24 @@ if (isset($_SESSION['message'])) {
                 <form action="salaries.php?action=addBonus" method="POST" class="mb-4">
                     <input type="hidden" name="salaryId" value="<?php echo $salary['Id']; ?>">
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" name="description" placeholder="Lý do thưởng" required>
+                        <div class="col-md-4">
+                            <select class="form-select" name="type" required>
+                                <option value="">Chọn loại thưởng</option>
+                                <option value="0">Thưởng tùy chọn</option>
+                                <option value="1">Thưởng sinh nhật</option>
+                                <option value="2">Thưởng lễ, tết</option>
+                            </select>
                         </div>
                         <div class="col-md-4">
+                            <input type="text" class="form-control" name="description" placeholder="Lý do thưởng" required>
+                        </div>
+                        <div class="col-md-3">
                             <div class="input-group">
                                 <input type="number" class="form-control" name="amount" placeholder="Số tiền" required>
                                 <span class="input-group-text">VNĐ</span>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-plus"></i>
                             </button>
@@ -160,6 +168,7 @@ if (isset($_SESSION['message'])) {
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>Loại thưởng</th>
                                     <th>Lý do</th>
                                     <th>Số tiền</th>
                                     <?php if(!isset($_GET['view'])): ?>
@@ -170,6 +179,7 @@ if (isset($_SESSION['message'])) {
                             <tbody>
                                 <?php foreach($bonuses as $bonus): ?>
                                 <tr>
+                                    <td><?php echo Bonus::getTypeName($bonus['Type']); ?></td>
                                     <td><?php echo htmlspecialchars($bonus['Description']); ?></td>
                                     <td><?php echo number_format($bonus['Amount'], 0, ',', '.'); ?> VNĐ</td>
                                     <?php if(!isset($_GET['view'])): ?>
@@ -186,7 +196,7 @@ if (isset($_SESSION['message'])) {
                             </tbody>
                             <tfoot>
                                 <tr class="table-primary">
-                                    <th>Tổng thưởng</th>
+                                    <th colspan="2">Tổng thưởng</th>
                                     <th colspan="<?php echo isset($_GET['view']) ? '1' : '2'; ?>">
                                         <?php 
                                         $totalBonus = array_sum(array_column($bonuses, 'Amount'));
@@ -195,7 +205,7 @@ if (isset($_SESSION['message'])) {
                                     </th>
                                 </tr>
                                 <tr class="table-success">
-                                    <th>Tổng lương</th>
+                                    <th colspan="2">Tổng lương</th>
                                     <th colspan="<?php echo isset($_GET['view']) ? '1' : '2'; ?>">
                                         <?php 
                                         $totalSalary = $salary['BaseSalary'] + $totalBonus;
@@ -216,7 +226,17 @@ if (isset($_SESSION['message'])) {
 <script>
 document.getElementById('userId').addEventListener('change', function() {
     if(this.value) {
-        window.location.href = 'salaries.php?action=create&userId=' + this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('userId', this.value);
+        window.location.href = url.toString();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedUserId = urlParams.get('userId');
+    if(selectedUserId) {
+        document.getElementById('userId').value = selectedUserId;
     }
 });
 </script>

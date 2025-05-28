@@ -59,6 +59,9 @@ switch ($action) {
             header("Location: salaries.php");
         }
         break;
+    case 'bulkCreate':
+        $controller->bulkCreate();
+        break;
     default:
         $controller->index();
         break;

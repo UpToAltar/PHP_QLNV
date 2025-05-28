@@ -68,7 +68,8 @@ class UserController {
     }
 
     public function edit($id) {
-        $user = $this->user->readOne($id);
+        $stmt = $this->user->readOne($id);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if($_POST) {
             $this->user->id = $id;

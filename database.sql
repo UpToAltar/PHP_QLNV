@@ -87,6 +87,7 @@ CREATE TABLE Bonus (
     Description VARCHAR(255),
     Amount DECIMAL(15,2),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Type INT
     
     FOREIGN KEY (SalaryId) REFERENCES Salary(Id)
 );

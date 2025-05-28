@@ -2,17 +2,20 @@
 require_once 'config/database.php';
 require_once 'models/Salary.php';
 require_once 'models/User.php';
+require_once 'models/Bonus.php';
 
 class SalaryController {
     private $db;
     private $salary;
     private $user;
+    private $bonus;
 
     public function __construct() {
         $database = new Database();
         $this->db = $database->getConnection();
         $this->salary = new Salary($this->db);
         $this->user = new User($this->db);
+        $this->bonus = new Bonus($this->db);
     }
 
     public function index() {
@@ -40,14 +43,20 @@ class SalaryController {
         if($_POST) {
             $this->salary->id = uniqid();
             $this->salary->userId = $_POST['userId'];
-            $this->salary->month = $_POST['month'];
+            $this->salary->month = date('Y-m-01', strtotime($_POST['month'] . '-01'));
             $this->salary->baseSalary = $_POST['baseSalary'];
 
             // Kiểm tra xem đã tồn tại lương của nhân viên trong tháng này chưa
             if($this->salary->existsForMonth()) {
-                $_SESSION['message'] = 'Đã tồn tại lương của nhân viên này trong tháng này!';
+                // Lấy thông tin nhân viên để hiển thị trong thông báo
+                $stmt = $this->user->readOne($this->salary->userId);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                $_SESSION['message'] = 'Nhân viên ' . htmlspecialchars($user['Name']) . 
+                                     ' đã có bảng lương trong tháng ' . 
+                                     date('m/Y', strtotime($this->salary->month)) . '!';
                 $_SESSION['message_type'] = 'error';
-                header("Location: salaries.php");
+                header("Location: salaries.php?action=create&userId=" . $this->salary->userId);
                 exit();
             }
 
@@ -86,16 +95,8 @@ class SalaryController {
         if($_POST) {
             $this->salary->id = $id;
             $this->salary->userId = $_POST['userId'];
-            $this->salary->month = $_POST['month'];
+            $this->salary->month = $salary['Month'];
             $this->salary->baseSalary = $_POST['baseSalary'];
-
-            // Kiểm tra xem đã tồn tại lương của nhân viên trong tháng này chưa (trừ bản ghi hiện tại)
-            if($this->salary->existsForMonth() && $salary['UserId'] != $_POST['userId']) {
-                $_SESSION['message'] = 'Đã tồn tại lương của nhân viên này trong tháng này!';
-                $_SESSION['message_type'] = 'error';
-                header("Location: salaries.php");
-                exit();
-            }
 
             if($this->salary->update()) {
                 $_SESSION['message'] = 'Cập nhật lương thành công!';
@@ -161,7 +162,26 @@ class SalaryController {
     public function addBonus() {
         if($_POST) {
             $this->salary->id = $_POST['salaryId'];
-            if($this->salary->addBonus($_POST['description'], $_POST['amount'])) {
+            
+            // Kiểm tra nếu là thưởng sinh nhật
+            if($_POST['type'] == 1) {
+                // Lấy thông tin lương để biết userId
+                $stmt = $this->salary->readOne();
+                $salary = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Lấy năm hiện tại
+                $currentYear = date('Y');
+                
+                // Kiểm tra xem đã có thưởng sinh nhật trong năm chưa
+                if($this->bonus->hasBirthdayBonus($salary['UserId'], $currentYear)) {
+                    $_SESSION['message'] = 'Nhân viên này đã được thưởng sinh nhật trong năm ' . $currentYear . '!';
+                    $_SESSION['message_type'] = 'error';
+                    header("Location: salaries.php?action=edit&id=" . $_POST['salaryId']);
+                    exit();
+                }
+            }
+
+            if($this->salary->addBonus($_POST['description'], $_POST['amount'], $_POST['type'])) {
                 $_SESSION['message'] = 'Thêm thưởng thành công!';
                 $_SESSION['message_type'] = 'success';
             } else {
@@ -184,6 +204,72 @@ class SalaryController {
         }
         header("Location: salaries.php?action=edit&id=" . $salaryId);
         exit();
+    }
+
+    public function bulkCreate() {
+        if($_POST) {
+            // Kiểm tra nếu tháng đích đã qua
+            $targetMonth = $_POST['targetMonth'];
+            $currentMonth = date('Y-m');
+            
+            if($targetMonth < $currentMonth) {
+                $_SESSION['message'] = 'Không thể tạo bảng lương cho tháng đã qua!';
+                $_SESSION['message_type'] = 'error';
+                header("Location: salaries.php?action=bulkCreate");
+                exit();
+            }
+            
+            $sourceMonth = date('Y-m-01', strtotime($_POST['sourceMonth'] . '-01'));
+            $targetMonth = date('Y-m-01', strtotime($targetMonth . '-01'));
+            
+            // Lấy danh sách tất cả nhân viên
+            $stmt = $this->user->readAll(0, 1000);
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $successCount = 0;
+            $skipExistsCount = 0; // Đếm số bảng lương đã tồn tại trong tháng đích
+            $skipNoSourceCount = 0; // Đếm số nhân viên không có bảng lương tháng nguồn
+            
+            foreach($users as $user) {
+                // Kiểm tra xem đã có bảng lương trong tháng đích chưa
+                $this->salary->userId = $user['Id'];
+                $this->salary->month = $targetMonth;
+                $this->salary->id = uniqid();
+                if($this->salary->existsForMonth()) {
+                    $skipExistsCount++;
+                    continue;
+                }
+                
+                // Lấy bảng lương của tháng nguồn
+                $this->salary->month = $sourceMonth;
+                $stmt = $this->salary->getByUserAndMonth();
+                $sourceSalary = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if(!$sourceSalary) {
+                    $skipNoSourceCount++;
+                    continue;
+                }
+                
+                // Tạo bảng lương mới
+                $this->salary->id = uniqid();
+                $this->salary->userId = $user['Id'];
+                $this->salary->month = $targetMonth;
+                $this->salary->baseSalary = $sourceSalary['BaseSalary'];
+                
+                if($this->salary->create()) {
+                    $successCount++;
+                }
+            }
+            
+            $_SESSION['message'] = "Đã tạo thành công $successCount bảng lương. " . 
+                                 "Bỏ qua $skipExistsCount bảng lương đã tồn tại trong tháng đích. " .
+                                 "Bỏ qua $skipNoSourceCount nhân viên không có bảng lương tháng nguồn.";
+            $_SESSION['message_type'] = 'success';
+            header("Location: salaries.php");
+            exit();
+        }
+        
+        include 'views/salaries/bulk_create.php';
     }
 }
 ?> 
