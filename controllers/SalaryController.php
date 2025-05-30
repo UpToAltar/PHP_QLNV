@@ -271,5 +271,40 @@ class SalaryController {
         
         include 'views/salaries/bulk_create.php';
     }
+
+    public function birthdayBonus() {
+        // Lấy danh sách nhân viên sinh nhật hôm nay (có tên phòng ban và chức vụ)
+        $users = $this->user->getBirthdaysTodayWithDepartment();
+        $message = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bonus'])) {
+            $bonuses = $_POST['bonus']; // [userId => amount]
+            $currentYear = date('Y');
+            $created = 0;
+            $skipped = 0;
+            $noSalaryCount = 0; // Đếm số nhân viên không có bảng lương tháng hiện tại
+            $alreadyBonusCount = 0; // Đếm số nhân viên đã có thưởng sinh nhật trong năm
+            foreach ($bonuses as $userId => $amount) {
+                var_dump($userId);
+                if (empty($amount) || $amount <= 0) continue;
+                // Lấy bảng lương tháng hiện tại
+                $currentMonth = date('Y-m-01');
+                $salaryStmt = $this->salary->getByUserAndDate($userId, $currentMonth);
+                $salary = $salaryStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$salary) { $noSalaryCount++; continue; }
+                // Kiểm tra đã có thưởng sinh nhật trong năm chưa
+                if ($this->bonus->hasBirthdayBonus($userId, $currentYear)) { $alreadyBonusCount++; continue; }
+                // Tạo thưởng sinh nhật
+                $this->bonus->id = uniqid();
+                $this->bonus->salaryId = $salary['Id'];
+                $this->bonus->description = 'Thưởng sinh nhật';
+                $this->bonus->amount = $amount;
+                $this->bonus->type = 1;
+                $this->bonus->create();
+                $created++;
+            }
+            $message = "Đã tạo thưởng sinh nhật cho $created nhân viên. Bỏ qua $noSalaryCount nhân viên không có bảng lương tháng hiện tại, $alreadyBonusCount nhân viên đã có thưởng sinh nhật trong năm.";
+        }
+        include 'views/salaries/birthday_bonus.php';
+    }
 }
 ?> 

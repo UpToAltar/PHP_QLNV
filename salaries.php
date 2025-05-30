@@ -62,6 +62,9 @@ switch ($action) {
     case 'bulkCreate':
         $controller->bulkCreate();
         break;
+    case 'birthdayBonus':
+        $controller->birthdayBonus();
+        break;
     default:
         $controller->index();
         break;

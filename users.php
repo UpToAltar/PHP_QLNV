@@ -22,6 +22,13 @@ switch($action) {
         $id = $_GET['id'];
         $userController->delete($id);
         break;
+    case 'view':
+        if (isset($_GET['id'])) {
+            $userController->view($_GET['id']);
+        } else {
+            header("Location: users.php");
+        }
+        break;
     default:
         $userController->index();
         break;

@@ -151,7 +151,7 @@ class User {
 
     // Lấy danh sách sinh nhật hôm nay kèm tên phòng ban
     public function getBirthdaysTodayWithDepartment() {
-        $query = "SELECT u.Name, u.Position, d.Name as department_name 
+        $query = "SELECT u.Id, u.Name, u.Position, u.BirthDay, d.Name as department_name 
                   FROM " . $this->table_name . " u 
                   LEFT JOIN Department d ON u.DepartmentId = d.Id 
                   WHERE DATE_FORMAT(u.BirthDay, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')";

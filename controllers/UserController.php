@@ -2,6 +2,9 @@
 require_once 'config/database.php';
 require_once 'models/User.php';
 require_once 'models/Department.php';
+require_once 'models/Salary.php';
+require_once 'models/ProjectMember.php';
+require_once 'models/Project.php';
 
 class UserController {
     private $db;
@@ -119,6 +122,35 @@ class UserController {
             header("Location: users.php");
         }
         exit();
+    }
+
+    public function view($id) {
+        // Lấy thông tin cơ bản
+        $stmt = $this->user->readOne($id);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Lấy danh sách bảng lương
+        $salaryModel = new Salary($this->db);
+        $salaryStmt = $salaryModel->getByUser($id);
+        $salaries = $salaryStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Lấy danh sách dự án tham gia
+        $projectMemberModel = new ProjectMember($this->db);
+        $projectModel = new Project($this->db);
+        $projectStmt = $projectMemberModel->getByUserId($id);
+        $projectMembers = $projectStmt->fetchAll(PDO::FETCH_ASSOC);
+        $projects = [];
+        foreach ($projectMembers as $pm) {
+            $projectModel->id = $pm['ProjectId'];
+            $p = $projectModel->readOne()->fetch(PDO::FETCH_ASSOC);
+            if ($p) {
+                $p['Role'] = $pm['Role'];
+                $p['DateJoin'] = $pm['DateJoin'];
+                $projects[] = $p;
+            }
+        }
+
+        include 'views/users/view.php';
     }
 }
 ?>

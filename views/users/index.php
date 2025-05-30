@@ -55,6 +55,7 @@ if (isset($_SESSION['message'])) {
                         <th>Email</th>
                         <th>Điện thoại</th>
                         <th>Chức vụ</th>
+                        <th>Ngày sinh</th>
                         <th>Phòng ban</th>
                         <th>Trạng thái</th>
                         <th>Thao tác</th>
@@ -79,6 +80,7 @@ if (isset($_SESSION['message'])) {
                         <td><?php echo htmlspecialchars($user['Email']); ?></td>
                         <td><?php echo htmlspecialchars($user['Phone']); ?></td>
                         <td><?php echo htmlspecialchars($user['Position']); ?></td>
+                        <td><?php echo !empty($user['BirthDay']) ? date('d/m/Y', strtotime($user['BirthDay'])) : '-'; ?></td>
                         <td><?php echo htmlspecialchars($user['department_name']); ?></td>
                         <td>
                             <?php if($user['Status'] == 1): ?>
@@ -96,6 +98,9 @@ if (isset($_SESSION['message'])) {
                                    class="btn btn-outline-danger" 
                                    onclick="return confirm('Bạn có chắc muốn xóa nhân viên này?')">
                                     <i class="fas fa-trash"></i>
+                                </a>
+                                <a href="users.php?action=view&id=<?php echo $user['Id']; ?>" class="btn btn-outline-info">
+                                    <i class="fas fa-eye"></i>
                                 </a>
                             </div>
                         </td>

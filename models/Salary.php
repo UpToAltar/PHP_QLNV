@@ -228,5 +228,19 @@ class Salary {
         
         return $stmt;
     }
+
+    public function getByUserAndDate($userId, $month) {
+        $query = "SELECT * FROM " . $this->table_name . " 
+                 WHERE UserId = :userId 
+                 AND DATE_FORMAT(Month, '%Y-%m') = DATE_FORMAT(:month, '%Y-%m')";
+        var_dump($userId);
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":userId", $userId);
+        $stmt->bindParam(":month", $month);
+        $stmt->execute();
+        
+        return $stmt;
+    }
+    
 }
 ?>
